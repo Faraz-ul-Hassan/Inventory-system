@@ -15,8 +15,14 @@ onMounted(loadProducts)
 
 async function addProductHandler() {
   if (!name.value || !price.value || !quantity.value) return
-  await addProduct({ name: name.value, price: price.value, quantity: quantity.value })
-  name.value = price.value = quantity.value = ''
+  await addProduct({
+    name: name.value,
+    price: price.value,
+    quantity: quantity.value
+  })
+  name.value = ''
+  price.value = ''
+  quantity.value = ''
   await loadProducts()
 }
 

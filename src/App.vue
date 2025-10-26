@@ -17,9 +17,9 @@
 
 <script setup>
 import { ref } from 'vue'
-import Products from './components/Products.vue'
-import Customers from './components/Customers.vue'
-import Invoices from './components/Invoices.vue'
+import Products from './components/ProductsList.vue'
+import Customers from './components/CustomersList.vue'
+import Invoices from './components/InvoicesList.vue'
 
 const current = ref('products')
 </script>

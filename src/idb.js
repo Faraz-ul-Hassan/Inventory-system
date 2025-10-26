@@ -1,7 +1,7 @@
 import { openDB } from "idb";
 
 export const dbPromise = openDB('inventoryDB', 1, {
-    upgrade(db) {
+    upgrade(db) { // for database creation
         if (!db.objectStoreNames.contains('products')) {
             db.createObjectStore('products', {keyPath: 'id', autoIncrement: true });
         }
@@ -13,8 +13,7 @@ export const dbPromise = openDB('inventoryDB', 1, {
         }
     },
 });
-
-// ----Products----
+// products
 export async function addProduct(product) {
   const db = await dbPromise;
   await db.add('products', product);
@@ -28,7 +27,7 @@ export async function deleteProduct(id) {
   await db.delete('products', id);
 }
 
-// ----Customers----
+// -Customers
 export async function addCustomer(customer) {
   const db = await dbPromise;
   await db.add('customers', customer);
@@ -41,8 +40,7 @@ export async function deleteCustomer(id) {
   const db = await dbPromise;
   await db.delete('customers', id);
 }
-
-// ---------- INVOICES ----------
+// invoices
 export async function addInvoice(invoice) {
   const db = await dbPromise;
   await db.add('invoices', invoice);
@@ -57,10 +55,18 @@ export async function deleteInvoice(id) {
 }
 
 
+export async function updateProductQuantity(productId, newQuantity) {
+  const db = await dbPromise;
+  const tx = db.transaction('products', 'readwrite');
+  const store = tx.objectStore('products');
+  const product = await store.get(productId);
 
+  if (!product) return false;
 
-
-
+  product.quantity = newQuantity;
+  await store.put(product);
+  return true;
+}
 
 
 

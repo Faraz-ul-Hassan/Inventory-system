@@ -15,8 +15,13 @@ onMounted(loadCustomers)
 
 async function addCustomerHandler() {
   if (!name.value || !email.value || !phone.value) return
-  await addCustomer({ name: name.value, email: email.value, phone: phone.value })
-  name.value = email.value = phone.value = ''
+  await addCustomer({
+    name: name.value,
+    email: email.value,
+    phone: phone.value })
+  name.value = ''
+  email.value = ''
+  phone.value = ''
   await loadCustomers()
 }
 
