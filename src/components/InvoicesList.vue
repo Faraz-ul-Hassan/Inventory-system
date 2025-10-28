@@ -6,8 +6,9 @@
    } from '../idb'
 
   const customerId = ref('')
-  const productId = ref('')
-  const quantity = ref(1)
+  // const productId = ref('')
+  // const quantity = ref(1)
+  const productSelections = ref([{ productId: '', quantity: 1}])
   const invoices = ref([])
   const customers = ref([])
   const products = ref([])
@@ -26,49 +27,76 @@
 
   onMounted(loadData)
 
-  watch(productId, id => {
-    const product = products.value.find(p => p.id === parseInt(id))
-    selectedProductQty.value = product ? product.quantity : 0
-  })
+  function addProductRow() {
+    productSelections.value.push({ productId: '', quantity: 1})
+  }
+
+  function removeProductRow(index) {
+    productSelections.value.splice(index, 1)
+  }
+
+  watch(
+    () => productSelections.value.map(p => p.productId),
+    (newVal) => {
+      const lastId = parseInt(newVal[newVal.length - 1])
+      const product = products.value.find(p => p.id === lastId)
+      selectedProductQty.value = product ? product.quantity : 0
+    }
+  )
 
   async function addInvoiceHandler() {
-    if (!customerId.value || !productId.value || !quantity.value) return
+    if (!customerId.value || productSelections.value.length === 0 || !invoiceType.value) return
 
     const customer = customers.value.find(c => c.id === parseInt(customerId.value))
-    const product = products.value.find(p => p.id === parseInt(productId.value))
+    if (!customer) return
 
-    if (invoiceType.value === 'seller') {
-      product.quantity += quantity.value; // increment on seller (when buying)
-      await updateProductQuantity(product.id, product.quantity);
-    } else if (invoiceType.value === 'purchaser') {
-      if (!product || quantity.value > product.quantity) {
-        alert('Not enough stock!');
-        return;
+    // Create a single invoice object with all products
+    const invoiceProducts = []
+
+    for (const selection of productSelections.value) {
+      const product = products.value.find(p => p.id === parseInt(selection.productId))
+      if (!product) continue
+
+      if (invoiceType.value === 'seller') {
+        product.quantity += selection.quantity
+        await updateProductQuantity(product.id, product.quantity)
+      } else if (invoiceType.value === 'purchaser') {
+        if (selection.quantity > product.quantity) {
+          alert(`Not enough stock for ${product.name}!`)
+          continue
+        }
+        product.quantity -= selection.quantity
+        await updateProductQuantity(product.id, product.quantity)
       }
-      product.quantity -= quantity.value; // decrement on purchaser (for customers)
-      await updateProductQuantity(product.id, product.quantity);
+
+      invoiceProducts.push({
+        productId: product.id,
+        productName: product.name,
+        price: product.price,
+        quantity: selection.quantity,
+        stock: product.quantity,
+        total: product.price * selection.quantity
+      })
     }
 
-    const total = product.price * quantity.value
-
+    // Only add one invoice with multiple products
     const invoice = {
       customerId: customer.id,
       customerName: customer.name,
-      productId: product.id,
-      productName: product.name,
-      price: product.price,
-      quantity: quantity.value,
-      stock: product.quantity,
       type: invoiceType.value,
-      total
+      products: invoiceProducts,
+      total: invoiceProducts.reduce((sum, p) => sum + p.total, 0)
     }
 
     await addInvoice(invoice)
-    customerId.value = productId.value = ''
-    quantity.value = 1
-    selectedProductQty.value = 0
+
+    // Reset form
+    customerId.value = ''
+    invoiceType.value = ''
+    productSelections.value = [{ productId: '', quantity: 1 }]
     await loadInvoices()
   }
+
 
   async function deleteInvoiceHandler(id) {
     await deleteInvoice(id)
@@ -93,34 +121,73 @@
           <option v-for="c in customers" :key="c.id" :value="c.id">{{ c.name }}</option>
         </select>
 
-        <select v-model="productId" class="form-select mb-2">
-          <option value="">Select Product</option>
-          <option v-for="p in products" :key="p.id" :value="p.id">
-            {{ p.name }} - {{ p.price }} PKR
-          </option>
+        <div v-for="(selection, index) in productSelections" :key="index" class="d-flex gap-2 align-items-center mb-2">
+            <select v-model="selection.productId" class="form-select">
+              <option value="">Select Product</option>
+              <option v-for="p in products" :key="p.id" :value="p.id">
+                {{ p.name }} - {{ p.price }} PKR (Stock: {{ p.quantity }})
+              </option>
+            </select>
 
-        </select>
-        <p v-if="selectedProductQty">Available: {{ selectedProductQty }}</p>
+            <input v-model.number="selection.quantity" type="number" min="1" class="form-control w-25" placeholder="Qty" />
 
-        <input v-model.number="quantity" type="number" min="1" class="form-control mb-2" placeholder="Quantity" />
+            <button type="button" class="btn btn-outline-danger btn-sm" @click="removeProductRow(index)" v-if="productSelections.length > 1">×</button>
+        </div>
+
+        <div class="d-flex justify-content-end mb-2">
+          <button type="button" class="btn btn-outline-primary" @click="addProductRow">Add More Products</button>
+        </div>
+
+        <!-- <p v-if="selectedProductQty">Available: {{ selectedProductQty }}</p> -->
+
+        <!-- <input v-model.number="quantity" type="number" min="1" class="form-control mb-2" placeholder="Quantity" /> -->
         <button class="btn btn-success w-100">Add Invoice</button>
       </form>
-
-      <ul class="list-group">
+      <div class="row">
+        <div v-for="inv in invoices" :key="inv.id" class="col-12 col-md-6 col-lg-3 mb-3">
+          <div class="card shadow-sm">
+            <div class="card-body">
+              <h5 class="card-title">{{ inv.customerName }}</h5>
+              <h6 class="card-subtitle mb-2 text-muted">{{ inv.type === 'seller' ? 'Purchased' : 'Sold' }}</h6>
+              <ul class="list-unstyled mb-2">
+                <li v-for="p in inv.products" :key="p.productId">
+                  -> {{ p.productName }} x {{ p.quantity }} = {{ p.total }}<br> ( -/{{ p.price }} )
+                </li>
+              </ul>
+              <p class="fw-bold">Total: {{ inv.total }} PKR</p>
+            </div>
+            <div class="card-footer d-flex gap-2 justify-content-end">
+              <button class="btn btn-warning">Edit</button>
+              <button @click="deleteInvoiceHandler(inv.id)" class="btn btn-danger btn-sm">Delete</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- <ul class="list-group">
         <li
           v-for="inv in invoices"
           :key="inv.id"
-          class="list-group-item d-flex justify-content-between align-items-center"
+          class="list-group-item mx-2 shadow d-flex justify-content-between align-items-center"
         >
-          <div>
+           <div>
             <strong>{{ inv.customerName }}</strong>
             {{ inv.type === 'seller' ? 'Purchased' : 'Sold' }}
             <em>{{ inv.productName }}</em> × {{ inv.quantity }}
             <br />
             <small>{{ inv.price }} × {{ inv.quantity }} = {{ inv.total }} PKR</small>
+          </div> ->
+          <div>
+            <strong>{{ inv.customerName }}</strong> - {{ inv.type === 'seller' ? 'Purchased' : 'Sold' }}
+            <ul class="list-unstyled mb-2">
+              <li v-for="p in inv.products" :key="p.productId">
+                {{ p.productName }} × {{ p.quantity }} @ {{ p.price }} PKR = {{ p.total }} PKR
+              </li>
+            </ul>
+            <strong>Total: {{ inv.total }} PKR</strong>
           </div>
+          <button class="btn btn-warning">Edit</button>
           <button @click="deleteInvoiceHandler(inv.id)" class="btn btn-danger btn-sm">Delete</button>
         </li>
-      </ul>
+      </ul> -->
     </div>
   </template>

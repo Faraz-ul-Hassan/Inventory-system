@@ -68,5 +68,10 @@ export async function updateProductQuantity(productId, newQuantity) {
   return true;
 }
 
-
+export async function updateInvoice(updatedInvoice) {
+  const db = await dbPromise;
+  const tx = db.transaction('invoices', 'readwrite');
+  await tx.store.put(updatedInvoice);
+  await tx.done;
+}
 
