@@ -3,7 +3,6 @@ import { ref, onMounted } from 'vue'
 import { addCustomer, getAllCustomers, deleteCustomer } from '../idb'
 
 const name = ref('')
-const email = ref('')
 const phone = ref('')
 const customers = ref([])
 
@@ -14,13 +13,12 @@ async function loadCustomers() {
 onMounted(loadCustomers)
 
 async function addCustomerHandler() {
-  if (!name.value || !email.value || !phone.value) return
+  if (!name.value || !phone.value) return
   await addCustomer({
     name: name.value,
-    email: email.value,
-    phone: phone.value })
+    phone: phone.value
+  })
   name.value = ''
-  email.value = ''
   phone.value = ''
   await loadCustomers()
 }
@@ -37,7 +35,6 @@ async function deleteCustomerHandler(id) {
 
     <form @submit.prevent="addCustomerHandler" class="mb-3">
       <input v-model="name" class="form-control mb-2" placeholder="Customer Name" />
-      <input v-model="email" class="form-control mb-2" placeholder="Email" />
       <input v-model="phone" class="form-control mb-2" placeholder="Phone" />
       <button class="btn btn-success w-100">Add Customer</button>
     </form>
@@ -50,9 +47,11 @@ async function deleteCustomerHandler(id) {
       >
         <div>
           <strong>{{ c.name }}</strong>
-          <div class="text-muted small">{{ c.email }} | {{ c.phone }}</div>
+          <div class="text-muted small">{{ c.phone }}</div>
         </div>
-        <button @click="deleteCustomerHandler(c.id)" class="btn btn-danger btn-sm">Delete</button>
+        <button @click="deleteCustomerHandler(c.id)" class="btn btn-danger btn-sm">
+          Delete
+        </button>
       </li>
     </ul>
   </div>

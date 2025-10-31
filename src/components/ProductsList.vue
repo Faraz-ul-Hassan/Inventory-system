@@ -3,8 +3,9 @@ import { ref, onMounted } from 'vue'
 import { addProduct, getAllProducts, deleteProduct } from '../idb'
 
 const name = ref('')
-const price = ref('')
 const quantity = ref('')
+const purchasePrice = ref('')
+const salePrice = ref('')
 const products = ref([])
 
 async function loadProducts() {
@@ -14,14 +15,16 @@ async function loadProducts() {
 onMounted(loadProducts)
 
 async function addProductHandler() {
-  if (!name.value || !price.value || !quantity.value) return
+  if (!name.value || !purchasePrice.value || !salePrice.value || !quantity.value) return
   await addProduct({
     name: name.value,
-    price: price.value,
+    purchasePrice: purchasePrice.value,
+    salePrice: salePrice.value,
     quantity: quantity.value
   })
   name.value = ''
-  price.value = ''
+  purchasePrice.value = ''
+  salePrice.value = ''
   quantity.value = ''
   await loadProducts()
 }
@@ -38,17 +41,21 @@ async function deleteProductHandler(id) {
 
     <form @submit.prevent="addProductHandler" class="mb-3">
       <input v-model="name" class="form-control mb-2" placeholder="Product name" />
-      <input v-model.number="price" class="form-control mb-2" placeholder="Price" />
+      <input v-model.number="purchasePrice" class="form-control mb-2" placeholder="Purchase Price" />
+      <input v-model.number="salePrice" class="form-control mb-2" placeholder="Sale Price" />
       <input v-model.number="quantity" class="form-control mb-2" placeholder="Quantity" />
       <button class="btn btn-success w-100">Add Product</button>
     </form>
 
     <ul class="list-group">
-      <li v-for="p in products" :key="p.id" class="list-group-item d-flex justify-content-between">
-        {{ p.name }} - {{ p.price }} PKR (x{{ p.quantity }})
+      <li
+        v-for="p in products"
+        :key="p.id"
+        class="list-group-item d-flex justify-content-between"
+      >
+        {{ p.name }} - Buy: {{ p.purchasePrice }} / Sell: {{ p.salePrice }} PKR (Stock: {{ p.quantity }})
         <button @click="deleteProductHandler(p.id)" class="btn btn-danger btn-sm">Delete</button>
       </li>
     </ul>
   </div>
 </template>
-
